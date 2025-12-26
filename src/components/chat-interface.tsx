@@ -6,10 +6,10 @@ import { Send, Sparkles, AlertCircle } from 'lucide-react';
 import { ChatMessage } from './chat-message';
 import { chatService } from '@/lib/chat';
 import { useAppStore } from '@/lib/stores';
-import type { Message, ChatState } from '../../worker/types';
+import type { Message } from '../../worker/types';
 export function ChatInterface() {
   const activeSessionId = useAppStore(s => s.activeSessionId);
-  const config = useAppStore(s => s.globalConfig);
+  const globalConfig = useAppStore(s => s.globalConfig);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,17 +19,12 @@ export function ChatInterface() {
     if (activeSessionId) {
       chatService.switchSession(activeSessionId);
       loadMessages();
-      // Sync global config to worker session
-      chatService.sendMessage("", undefined).then(() => {
-         fetch(`/api/chat/${activeSessionId}/config`, {
-           method: 'POST',
-           body: JSON.stringify(config)
-         });
-      });
+      // Use dedicated config endpoint instead of sending a dummy message
+      chatService.updateSessionConfig(globalConfig);
     } else {
       setMessages([]);
     }
-  }, [activeSessionId, config]);
+  }, [activeSessionId, globalConfig]);
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -42,15 +37,14 @@ export function ChatInterface() {
     }
   };
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !activeSessionId) return;
     const userPrompt = input.trim();
     setInput('');
     setIsLoading(true);
     setStreamingContent('');
-    // Add local optimistic message
     const tempUserMsg: Message = { id: crypto.randomUUID(), role: 'user', content: userPrompt, timestamp: Date.now() };
     setMessages(prev => [...prev, tempUserMsg]);
-    const res = await chatService.sendMessage(userPrompt, config.model, (chunk) => {
+    const res = await chatService.sendMessage(userPrompt, globalConfig.model, (chunk) => {
       setStreamingContent(prev => prev + chunk);
     });
     if (res.success) {
@@ -67,7 +61,6 @@ export function ChatInterface() {
         </div>
         <h2 className="text-2xl font-bold">Welcome to PrismAI</h2>
         <p className="text-muted-foreground max-w-sm">Create a new chat or select one from the sidebar to begin your journey.</p>
-        <Button onClick={() => window.location.reload()}>Start New Conversation</Button>
       </div>
     );
   }
@@ -79,11 +72,11 @@ export function ChatInterface() {
             <ChatMessage key={m.id} message={m} />
           ))}
           {streamingContent && (
-            <ChatMessage message={{ 
-              id: 'streaming', 
-              role: 'assistant', 
-              content: streamingContent, 
-              timestamp: Date.now() 
+            <ChatMessage message={{
+              id: 'streaming',
+              role: 'assistant',
+              content: streamingContent,
+              timestamp: Date.now()
             }} />
           )}
           <div ref={scrollRef} />
@@ -106,8 +99,8 @@ export function ChatInterface() {
                   }
                 }}
               />
-              <Button 
-                size="icon" 
+              <Button
+                size="icon"
                 className="mb-1 rounded-lg shrink-0 h-9 w-9"
                 disabled={isLoading || !input.trim()}
                 onClick={handleSend}

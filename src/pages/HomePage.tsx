@@ -5,6 +5,7 @@ import { useAppStore } from '@/lib/stores';
 import { chatService } from '@/lib/chat';
 import { Toaster } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarGroupLabel, SidebarMenuAction, Sidebar, SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { MessageSquare, Plus, Settings, Trash2, Bot } from 'lucide-react';
 export function HomePage() {
@@ -13,14 +14,12 @@ export function HomePage() {
   const sessions = useAppStore(s => s.sessions);
   const setSessions = useAppStore(s => s.setSessions);
   const setSettingsOpen = useAppStore(s => s.setSettingsOpen);
-
   const refreshSessions = useCallback(async () => {
     const res = await chatService.listSessions();
     if (res.success && res.data) {
       setSessions(res.data);
     }
   }, [setSessions]);
-
   useEffect(() => {
     refreshSessions();
   }, [refreshSessions]);
@@ -67,20 +66,20 @@ export function HomePage() {
               <SidebarMenu className="px-2">
                 {sessions.map((session) => (
                   <SidebarMenuItem key={session.id}>
-                    <SidebarMenuButton 
-                      isActive={activeSessionId === session.id} 
+                    <SidebarMenuButton
+                      isActive={activeSessionId === session.id}
                       onClick={() => setActiveSessionId(session.id)}
-                      className="group py-5 px-3 rounded-lg transition-all"
+                      className="group py-5 px-3 rounded-lg transition-all pr-12"
                     >
                       <MessageSquare size={16} className="text-muted-foreground" />
                       <span className="truncate flex-1">{session.title}</span>
-                      <SidebarMenuAction 
-                        onClick={(e) => deleteSession(session.id, e)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
-                      >
-                        <Trash2 size={14} />
-                      </SidebarMenuAction>
                     </SidebarMenuButton>
+                    <SidebarMenuAction
+                      onClick={(e) => deleteSession(session.id, e)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive right-2"
+                    >
+                      <Trash2 size={14} />
+                    </SidebarMenuAction>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -94,11 +93,14 @@ export function HomePage() {
           </SidebarFooter>
         </Sidebar>
         <SidebarInset className="flex flex-col relative">
-          <header className="h-14 flex items-center px-4 border-b border-border/50 bg-background/50 backdrop-blur-md z-10 sticky top-0">
-            <SidebarTrigger className="mr-4" />
-            <div className="flex-1 font-medium text-sm text-muted-foreground truncate">
-              {sessions.find(s => s.id === activeSessionId)?.title || "Select a session"}
+          <header className="h-14 flex items-center px-4 border-b border-border/50 bg-background/50 backdrop-blur-md z-10 sticky top-0 justify-between">
+            <div className="flex items-center min-w-0">
+              <SidebarTrigger className="mr-4" />
+              <div className="font-medium text-sm text-muted-foreground truncate">
+                {sessions.find(s => s.id === activeSessionId)?.title || "Select a session"}
+              </div>
             </div>
+            <ThemeToggle className="relative right-0 top-0" />
           </header>
           <ChatInterface />
         </SidebarInset>
