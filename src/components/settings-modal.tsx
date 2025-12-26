@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/lib/stores';
 import { CLOUDFLARE_MODELS, EXTERNAL_MODELS, isCloudflareModel, chatService } from '@/lib/chat';
 import { toast } from 'sonner';
-import { Info, ShieldCheck, Zap } from 'lucide-react';
+import { Info, ShieldCheck, Zap, Globe } from 'lucide-react';
 export function SettingsModal() {
   const open = useAppStore(s => s.settingsOpen);
   const setOpen = useAppStore(s => s.setSettingsOpen);
@@ -30,19 +30,31 @@ export function SettingsModal() {
       await chatService.updateSessionConfig(form);
     }
     setOpen(false);
-    toast.success('Configuration saved');
+    toast.success('Configuration saved and applied to session');
   };
   const selectCloudflareModel = (modelId: string) => {
     setForm({
       ...form,
       model: modelId,
-      baseUrl: '', // Signals backend to use env defaults
+      baseUrl: '', 
       apiKey: ''
     });
   };
+  const applyPreset = (provider: string) => {
+    const preset = EXTERNAL_MODELS.find(m => m.provider === provider);
+    if (preset) {
+      setForm({
+        ...form,
+        baseUrl: preset.defaultBaseUrl || '',
+        model: preset.id
+      });
+      toast.info(`Applied ${provider} preset`);
+    }
+  };
+  const providers = Array.from(new Set(EXTERNAL_MODELS.map(m => m.provider)));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             AI Workspace Settings
@@ -86,60 +98,79 @@ export function SettingsModal() {
                 Automatic Setup
               </Badge>
               <p className="text-[11px] text-muted-foreground">
-                Base URL and API Key are handled internally.
+                Base URL and API Key are handled internally at the Edge.
               </p>
             </div>
           </TabsContent>
           <TabsContent value="byok" className="space-y-4 pt-4">
-            <div className="grid gap-2">
-              <Label htmlFor="baseUrl">Base URL</Label>
-              <Input
-                id="baseUrl"
-                placeholder="https://api.openai.com/v1"
-                value={form.baseUrl}
-                onChange={e => setForm({...form, baseUrl: e.target.value})}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="apiKey">API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                placeholder="sk-..."
-                value={form.apiKey}
-                onChange={e => setForm({...form, apiKey: e.target.value})}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="model">Model Name</Label>
-              <Input
-                id="model"
-                placeholder="gpt-4o"
-                value={form.model}
-                onChange={e => setForm({...form, model: e.target.value})}
-              />
-            </div>
-            <div className="pt-2">
-              <Label className="text-xs text-muted-foreground">External Presets</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {EXTERNAL_MODELS.map(m => (
+            <div className="space-y-3">
+              <Label className="text-xs text-muted-foreground">Provider Presets</Label>
+              <div className="flex flex-wrap gap-2">
+                {providers.map(p => (
                   <Button 
-                    key={m.id} 
+                    key={p} 
                     variant="outline" 
                     size="sm" 
-                    className="text-[10px] h-7 px-2"
-                    onClick={() => setForm({ ...form, model: m.id })}
+                    className="h-8 text-[11px] gap-1.5"
+                    onClick={() => applyPreset(p)}
                   >
-                    {m.name}
+                    <Globe size={12} /> {p}
                   </Button>
                 ))}
               </div>
             </div>
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="baseUrl">Base URL</Label>
+                <Input
+                  id="baseUrl"
+                  placeholder="https://api.openai.com/v1"
+                  value={form.baseUrl}
+                  onChange={e => setForm({...form, baseUrl: e.target.value})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="apiKey">API Key</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  placeholder="sk-..."
+                  value={form.apiKey}
+                  onChange={e => setForm({...form, apiKey: e.target.value})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="model">Model Name</Label>
+                <div className="flex gap-2">
+                  <Select value={form.model} onValueChange={m => setForm({...form, model: m})}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select preset or type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providers.map(p => (
+                        <SelectGroup key={p}>
+                          <SelectLabel>{p}</SelectLabel>
+                          {EXTERNAL_MODELS.filter(m => m.provider === p).map(m => (
+                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="w-1/3"
+                    placeholder="Custom ID"
+                    value={form.model}
+                    onChange={e => setForm({...form, model: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
-        <DialogFooter className="pt-4">
+        <DialogFooter className="pt-4 border-t border-border/50">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} className="bg-primary text-primary-foreground">Save Preferences</Button>
+          <Button onClick={handleSave} className="bg-primary text-primary-foreground px-8">Save & Apply</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -16,10 +16,9 @@ import {
   SelectLabel, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Plus, Settings, Trash2, Bot, Zap } from 'lucide-react';
+import { MessageSquare, Plus, Settings, Trash2, Bot, Zap, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 export function HomePage() {
-  // Zustand Zero-Tolerance Rule: Primitive selectors only
   const activeSessionId = useAppStore(s => s.activeSessionId);
   const setActiveSessionId = useAppStore(s => s.setActiveSessionId);
   const sessions = useAppStore(s => s.sessions);
@@ -65,10 +64,11 @@ export function HomePage() {
   };
   const handleModelChange = async (newModelId: string) => {
     const isCF = isCloudflareModel(newModelId);
+    const preset = EXTERNAL_MODELS.find(m => m.id === newModelId);
     const newConfig = {
       ...globalConfig,
       model: newModelId,
-      ...(isCF ? { baseUrl: '', apiKey: '' } : {})
+      ...(isCF ? { baseUrl: '', apiKey: '' } : (preset ? { baseUrl: preset.defaultBaseUrl } : {}))
     };
     setGlobalConfig(newConfig);
     if (activeSessionId) {
@@ -77,6 +77,7 @@ export function HomePage() {
     }
   };
   const activeSession = sessions.find(s => s.id === activeSessionId);
+  const externalProviders = Array.from(new Set(EXTERNAL_MODELS.map(m => m.provider)));
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -93,8 +94,8 @@ export function HomePage() {
             <SidebarGroup>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    onClick={createNewChat} 
+                  <SidebarMenuButton
+                    onClick={createNewChat}
                     className="w-full justify-start gap-2 bg-accent/50 hover:bg-accent text-accent-foreground font-medium py-6 px-4"
                   >
                     <Plus size={18} />
@@ -130,9 +131,9 @@ export function HomePage() {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="border-t border-border/50 p-2">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start gap-3 py-6 px-4 hover:bg-accent/50" 
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 py-6 px-4 hover:bg-accent/50"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings size={18} className="text-muted-foreground" />
@@ -152,32 +153,33 @@ export function HomePage() {
               {activeSessionId && (
                 <div className="hidden sm:flex items-center gap-2">
                   <Select value={globalConfig?.model || ''} onValueChange={handleModelChange}>
-                    <SelectTrigger className="h-8 text-xs bg-muted/50 border-none w-[160px]">
+                    <SelectTrigger className="h-8 text-[11px] bg-muted/50 border-none w-[180px] focus:ring-0">
                       <SelectValue placeholder="Model" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[400px]">
                       <SelectGroup>
-                        <SelectLabel>Cloudflare AI</SelectLabel>
+                        <SelectLabel className="flex items-center gap-1.5"><Zap size={10} /> Cloudflare Edge</SelectLabel>
                         {CLOUDFLARE_MODELS.map(m => (
                           <SelectItem key={m.id} value={m.id}>
-                            <div className="flex items-center gap-1.5">
-                              <Zap size={12} className="text-primary" />
-                              {m.name}
-                            </div>
+                            <span className="text-xs">{m.name}</span>
                           </SelectItem>
                         ))}
                       </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>External</SelectLabel>
-                        {EXTERNAL_MODELS.map(m => (
-                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                        ))}
-                      </SelectGroup>
+                      {externalProviders.map(provider => (
+                        <SelectGroup key={provider}>
+                          <SelectLabel className="flex items-center gap-1.5 opacity-70"><Globe size={10} /> {provider}</SelectLabel>
+                          {EXTERNAL_MODELS.filter(m => m.provider === provider).map(m => (
+                            <SelectItem key={m.id} value={m.id}>
+                              <span className="text-xs">{m.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
                     </SelectContent>
                   </Select>
                   {isCloudflareModel(globalConfig?.model || '') && (
-                    <Badge variant="secondary" className="h-5 text-[10px] bg-primary/10 text-primary border-none">
-                      Edge
+                    <Badge variant="secondary" className="h-5 text-[9px] bg-primary/10 text-primary border-none font-bold uppercase tracking-tighter">
+                      Ultra-Low Latency
                     </Badge>
                   )}
                 </div>

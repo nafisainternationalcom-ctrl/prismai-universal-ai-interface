@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,26 +18,27 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const loadMessages = useCallback(async () => {
+    const res = await chatService.getMessages();
+    if (res.success && res.data) {
+      setMessages(res.data.messages);
+    }
+  }, []);
   useEffect(() => {
     if (activeSessionId) {
       chatService.switchSession(activeSessionId);
       loadMessages();
+      // Sync global config to session whenever session or config changes
       chatService.updateSessionConfig(globalConfig);
     } else {
       setMessages([]);
     }
-  }, [activeSessionId]);
+  }, [activeSessionId, globalConfig, loadMessages]);
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, streamingContent]);
-  const loadMessages = async () => {
-    const res = await chatService.getMessages();
-    if (res.success && res.data) {
-      setMessages(res.data.messages);
-    }
-  };
   const handleSend = async () => {
     if (!input.trim() || isLoading || !activeSessionId) return;
     const userPrompt = input.trim();
@@ -154,18 +155,18 @@ export function ChatInterface() {
             <div className="flex items-center gap-2">
                {isCloudflareModel(globalConfig.model || '') ? (
                  <Badge variant="outline" className="text-[9px] h-4 bg-primary/5 border-primary/20 text-primary flex gap-1 items-center px-1.5">
-                   <Zap size={8} /> No API Key required
+                   <Zap size={8} /> Cloudflare Edge
                  </Badge>
                ) : (
-                 <Badge variant="outline" className="text-[9px] h-4 flex gap-1 items-center px-1.5">
-                   <Cpu size={8} /> BYOK Enabled
+                 <Badge variant="outline" className="text-[9px] h-4 flex gap-1 items-center px-1.5 border-indigo-500/30 text-indigo-500 bg-indigo-500/5">
+                   <Globe size={8} className="mr-1" /> BYOK Provider
                  </Badge>
                )}
             </div>
-            {!isByok && (
+            {!isByok && !isCloudflareModel(globalConfig.model || '') && (
               <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <AlertCircle size={10} className="text-amber-500" />
-                Default limits apply
+                Missing API Key
               </p>
             )}
           </div>

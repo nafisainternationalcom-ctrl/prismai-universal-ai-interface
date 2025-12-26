@@ -14,10 +14,19 @@ export const CLOUDFLARE_MODELS = [
   { id: '@cf/deepseek-ai/deepseek-coder-6.7b-instruct', name: 'DeepSeek Coder 6.7B', category: 'Coding' },
 ];
 export const EXTERNAL_MODELS = [
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
-  { id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
-  { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'OpenRouter' },
+  // Groq
+  { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', provider: 'Groq', defaultBaseUrl: 'https://api.groq.com/openai/v1' },
+  { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'Groq', defaultBaseUrl: 'https://api.groq.com/openai/v1' },
+  // Together AI
+  { id: 'meta-llama/Llama-3.1-405B-Instruct-Turbo', name: 'Llama 3.1 405B', provider: 'Together AI', defaultBaseUrl: 'https://api.together.xyz/v1' },
+  { id: 'mistralai/Mixtral-8x22B-Instruct-v0.1', name: 'Mixtral 8x22B', provider: 'Together AI', defaultBaseUrl: 'https://api.together.xyz/v1' },
+  // Fireworks
+  { id: 'accounts/fireworks/models/mixtral-8x22b-instruct', name: 'Mixtral 8x22B', provider: 'Fireworks', defaultBaseUrl: 'https://api.fireworks.ai/inference/v1' },
+  // DeepInfra
+  { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', name: 'Llama 3.1 70B', provider: 'DeepInfra', defaultBaseUrl: 'https://api.deepinfra.com/v1/openai' },
+  // OpenAI & Anthropic (OpenRouter defaults)
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', defaultBaseUrl: 'https://api.openai.com/v1' },
+  { id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', defaultBaseUrl: 'https://openrouter.ai/api/v1' },
 ];
 export const getModelLabel = (modelId: string): string => {
   const cfModel = CLOUDFLARE_MODELS.find(m => m.id === modelId);
