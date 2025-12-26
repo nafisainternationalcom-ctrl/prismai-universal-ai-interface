@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
+import React, { useEffect, useCallback } from 'react';
 import { ChatInterface } from '@/components/chat-interface';
 import { SettingsModal } from '@/components/settings-modal';
 import { useAppStore } from '@/lib/stores';
 import { chatService } from '@/lib/chat';
 import { Toaster } from '@/components/ui/sonner';
+import { Button } from '@/components/ui/button';
 import { SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarGroupLabel, SidebarMenuAction, Sidebar, SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { MessageSquare, Plus, Settings, Trash2, Bot } from 'lucide-react';
 export function HomePage() {
@@ -13,20 +13,22 @@ export function HomePage() {
   const sessions = useAppStore(s => s.sessions);
   const setSessions = useAppStore(s => s.setSessions);
   const setSettingsOpen = useAppStore(s => s.setSettingsOpen);
-  useEffect(() => {
-    refreshSessions();
-  }, []);
-  const refreshSessions = async () => {
+
+  const refreshSessions = useCallback(async () => {
     const res = await chatService.listSessions();
     if (res.success && res.data) {
       setSessions(res.data);
     }
-  };
+  }, [setSessions]);
+
+  useEffect(() => {
+    refreshSessions();
+  }, [refreshSessions]);
   const createNewChat = async () => {
     const res = await chatService.createSession();
     if (res.success && res.data) {
       setActiveSessionId(res.data.sessionId);
-      refreshSessions();
+      await refreshSessions();
     }
   };
   const deleteSession = async (id: string, e: React.MouseEvent) => {
@@ -34,7 +36,7 @@ export function HomePage() {
     const res = await chatService.deleteSession(id);
     if (res.success) {
       if (activeSessionId === id) setActiveSessionId(null);
-      refreshSessions();
+      await refreshSessions();
     }
   };
   return (
