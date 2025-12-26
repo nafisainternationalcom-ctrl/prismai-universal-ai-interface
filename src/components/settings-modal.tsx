@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,7 @@ import { Info, ShieldCheck, Zap, Globe } from 'lucide-react';
 export function SettingsModal() {
   const open = useAppStore(s => s.settingsOpen);
   const setOpen = useAppStore(s => s.setSettingsOpen);
-  const config = useAppStore(s => s.globalConfig);
+  const config = useAppStore(useShallow(s => s.globalConfig));
   const setConfig = useAppStore(s => s.setGlobalConfig);
   const activeSessionId = useAppStore(s => s.activeSessionId);
   const [form, setForm] = useState(config);
@@ -36,7 +37,7 @@ export function SettingsModal() {
     setForm({
       ...form,
       model: modelId,
-      baseUrl: '', 
+      baseUrl: '',
       apiKey: ''
     });
   };
@@ -107,10 +108,10 @@ export function SettingsModal() {
               <Label className="text-xs text-muted-foreground">Provider Presets</Label>
               <div className="flex flex-wrap gap-2">
                 {providers.map(p => (
-                  <Button 
-                    key={p} 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    key={p}
+                    variant="outline"
+                    size="sm"
                     className="h-8 text-[11px] gap-1.5"
                     onClick={() => applyPreset(p)}
                   >

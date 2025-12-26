@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Send, Sparkles, AlertCircle, Zap, Cpu, Terminal } from 'lucide-react';
+import { Send, Sparkles, AlertCircle, Zap, Cpu, Terminal, Globe } from 'lucide-react';
 import { ChatMessage } from './chat-message';
 import { chatService, CLOUDFLARE_MODELS, isCloudflareModel, getModelLabel } from '@/lib/chat';
 import { useAppStore } from '@/lib/stores';
@@ -11,7 +12,7 @@ import type { Message } from '../../worker/types';
 import { toast } from 'sonner';
 export function ChatInterface() {
   const activeSessionId = useAppStore(s => s.activeSessionId);
-  const globalConfig = useAppStore(s => s.globalConfig);
+  const globalConfig = useAppStore(useShallow(s => s.globalConfig));
   const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -29,6 +30,7 @@ export function ChatInterface() {
       chatService.switchSession(activeSessionId);
       loadMessages();
       // Sync global config to session whenever session or config changes
+      // We use the stable reference from useShallow to prevent unnecessary calls
       chatService.updateSessionConfig(globalConfig);
     } else {
       setMessages([]);
@@ -45,7 +47,12 @@ export function ChatInterface() {
     setInput('');
     setIsLoading(true);
     setStreamingContent('');
-    const tempUserMsg: Message = { id: crypto.randomUUID(), role: 'user', content: userPrompt, timestamp: Date.now() };
+    const tempUserMsg: Message = { 
+      id: crypto.randomUUID(), 
+      role: 'user', 
+      content: userPrompt, 
+      timestamp: Date.now() 
+    };
     setMessages(prev => [...prev, tempUserMsg]);
     const res = await chatService.sendMessage(userPrompt, globalConfig.model, (chunk) => {
       setStreamingContent(prev => prev + chunk);
@@ -60,7 +67,11 @@ export function ChatInterface() {
   };
   const startWithModel = async (modelId: string) => {
     const isCF = isCloudflareModel(modelId);
-    const newConfig = { ...globalConfig, model: modelId, ...(isCF ? { baseUrl: '', apiKey: '' } : {}) };
+    const newConfig = { 
+      ...globalConfig, 
+      model: modelId, 
+      ...(isCF ? { baseUrl: '', apiKey: '' } : {}) 
+    };
     setGlobalConfig(newConfig);
     if (activeSessionId) {
       await chatService.updateSessionConfig(newConfig);
@@ -79,9 +90,9 @@ export function ChatInterface() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
           {CLOUDFLARE_MODELS.slice(0, 3).map(m => (
-            <Button 
-              key={m.id} 
-              variant="outline" 
+            <Button
+              key={m.id}
+              variant="outline"
               className="h-auto py-4 px-4 flex-col gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all group"
               onClick={() => {
                 chatService.createSession(m.name).then(res => {

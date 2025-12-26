@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ChatInterface } from '@/components/chat-interface';
 import { SettingsModal } from '@/components/settings-modal';
 import { useAppStore } from '@/lib/stores';
@@ -21,10 +22,10 @@ import { toast } from 'sonner';
 export function HomePage() {
   const activeSessionId = useAppStore(s => s.activeSessionId);
   const setActiveSessionId = useAppStore(s => s.setActiveSessionId);
-  const sessions = useAppStore(s => s.sessions);
+  const sessions = useAppStore(useShallow(s => s.sessions));
   const setSessions = useAppStore(s => s.setSessions);
   const setSettingsOpen = useAppStore(s => s.setSettingsOpen);
-  const globalConfig = useAppStore(s => s.globalConfig);
+  const globalConfig = useAppStore(useShallow(s => s.globalConfig));
   const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
   const refreshSessions = useCallback(async () => {
     try {
@@ -149,7 +150,7 @@ export function HomePage() {
                 {activeSession?.title || "Select a session"}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               {activeSessionId && (
                 <div className="hidden sm:flex items-center gap-2">
                   <Select value={globalConfig?.model || ''} onValueChange={handleModelChange}>
