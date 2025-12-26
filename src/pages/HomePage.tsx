@@ -1,138 +1,108 @@
-// Home page of the app.
-// Currently a demo placeholder "please wait" screen.
-// Replace this file with your actual app UI. Do not delete it to use some other file as homepage. Simply replace the entire contents of this file.
-
-import { useEffect, useMemo, useState } from 'react'
-import { Sparkles } from 'lucide-react'
-
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { HAS_TEMPLATE_DEMO, TemplateDemo } from '@/components/TemplateDemo'
-import { Button } from '@/components/ui/button'
-import { Toaster, toast } from '@/components/ui/sonner'
-
-function formatDuration(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000))
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
+import React, { useEffect } from 'react';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { ChatInterface } from '@/components/chat-interface';
+import { SettingsModal } from '@/components/settings-modal';
+import { useAppStore } from '@/lib/stores';
+import { chatService } from '@/lib/chat';
+import { Toaster } from '@/components/ui/sonner';
+import { SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarGroupLabel, SidebarMenuAction, Sidebar, SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { MessageSquare, Plus, Settings, Trash2, Bot } from 'lucide-react';
 export function HomePage() {
-  const [coins, setCoins] = useState(0)
-  const [isRunning, setIsRunning] = useState(false)
-  const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [elapsedMs, setElapsedMs] = useState(0)
-
+  const activeSessionId = useAppStore(s => s.activeSessionId);
+  const setActiveSessionId = useAppStore(s => s.setActiveSessionId);
+  const sessions = useAppStore(s => s.sessions);
+  const setSessions = useAppStore(s => s.setSessions);
+  const setSettingsOpen = useAppStore(s => s.setSettingsOpen);
   useEffect(() => {
-    if (!isRunning || startedAt === null) return
-
-    const t = setInterval(() => {
-      setElapsedMs(Date.now() - startedAt)
-    }, 250)
-
-    return () => clearInterval(t)
-  }, [isRunning, startedAt])
-
-  const formatted = useMemo(() => formatDuration(elapsedMs), [elapsedMs])
-
-  const onPleaseWait = () => {
-    setCoins((c) => c + 1)
-
-    if (!isRunning) {
-      // Resume from the current elapsed time
-      setStartedAt(Date.now() - elapsedMs)
-      setIsRunning(true)
-      toast.success('Building your app…', {
-        description: "Hang tight — we're setting everything up.",
-      })
-      return
+    refreshSessions();
+  }, []);
+  const refreshSessions = async () => {
+    const res = await chatService.listSessions();
+    if (res.success && res.data) {
+      setSessions(res.data);
     }
-
-    setIsRunning(false)
-    toast.info('Still working…', {
-      description: 'You can come back in a moment.',
-    })
-  }
-
-  const onReset = () => {
-    setCoins(0)
-    setIsRunning(false)
-    setStartedAt(null)
-    setElapsedMs(0)
-    toast('Reset complete')
-  }
-
-  const onAddCoin = () => {
-    setCoins((c) => c + 1)
-    toast('Coin added')
-  }
-
+  };
+  const createNewChat = async () => {
+    const res = await chatService.createSession();
+    if (res.success && res.data) {
+      setActiveSessionId(res.data.sessionId);
+      refreshSessions();
+    }
+  };
+  const deleteSession = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = await chatService.deleteSession(id);
+    if (res.success) {
+      if (activeSessionId === id) setActiveSessionId(null);
+      refreshSessions();
+    }
+  };
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground p-4 overflow-hidden relative">
-      <ThemeToggle />
-      <div className="absolute inset-0 bg-gradient-rainbow opacity-10 dark:opacity-20 pointer-events-none" />
-
-      <div className="text-center space-y-8 relative z-10 animate-fade-in w-full">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-primary floating">
-            <Sparkles className="w-8 h-8 text-white rotating" />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h1 className="text-5xl md:text-7xl font-display font-bold text-balance leading-tight">
-            Creating your <span className="text-gradient">app</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto text-pretty">
-            Your application would be ready soon.
-          </p>
-        </div>
-
-        {HAS_TEMPLATE_DEMO ? (
-          <div className="max-w-5xl mx-auto text-left">
-            <TemplateDemo />
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-center gap-4">
-              <Button
-                size="lg"
-                onClick={onPleaseWait}
-                className="btn-gradient px-8 py-4 text-lg font-semibold hover:-translate-y-0.5 transition-all duration-200"
-                aria-live="polite"
-              >
-                Please Wait
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-              <div>
-                Time elapsed:{' '}
-                <span className="font-medium tabular-nums text-foreground">{formatted}</span>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex h-screen w-full overflow-hidden bg-background">
+        <Sidebar className="border-r border-border/50">
+          <SidebarHeader className="border-b border-border/50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+                <Bot size={20} />
               </div>
-              <div>
-                Coins:{' '}
-                <span className="font-medium tabular-nums text-foreground">{coins}</span>
-              </div>
+              <span className="font-bold text-lg tracking-tight">PrismAI</span>
             </div>
-
-            <div className="flex justify-center gap-2">
-              <Button variant="outline" size="sm" onClick={onReset}>
-                Reset
-              </Button>
-              <Button variant="outline" size="sm" onClick={onAddCoin}>
-                Add Coin
-              </Button>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={createNewChat} className="w-full justify-start gap-2 bg-accent/50 hover:bg-accent text-accent-foreground font-medium py-6 px-4">
+                    <Plus size={18} />
+                    <span>New Chat</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Recent Conversations</SidebarGroupLabel>
+              <SidebarMenu className="px-2">
+                {sessions.map((session) => (
+                  <SidebarMenuItem key={session.id}>
+                    <SidebarMenuButton 
+                      isActive={activeSessionId === session.id} 
+                      onClick={() => setActiveSessionId(session.id)}
+                      className="group py-5 px-3 rounded-lg transition-all"
+                    >
+                      <MessageSquare size={16} className="text-muted-foreground" />
+                      <span className="truncate flex-1">{session.title}</span>
+                      <SidebarMenuAction 
+                        onClick={(e) => deleteSession(session.id, e)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                      >
+                        <Trash2 size={14} />
+                      </SidebarMenuAction>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter className="border-t border-border/50 p-2">
+            <Button variant="ghost" className="w-full justify-start gap-3 py-6 px-4 hover:bg-accent/50" onClick={() => setSettingsOpen(true)}>
+              <Settings size={18} className="text-muted-foreground" />
+              <span className="font-medium">Settings</span>
+            </Button>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset className="flex flex-col relative">
+          <header className="h-14 flex items-center px-4 border-b border-border/50 bg-background/50 backdrop-blur-md z-10 sticky top-0">
+            <SidebarTrigger className="mr-4" />
+            <div className="flex-1 font-medium text-sm text-muted-foreground truncate">
+              {sessions.find(s => s.id === activeSessionId)?.title || "Select a session"}
             </div>
-          </>
-        )}
+          </header>
+          <ChatInterface />
+        </SidebarInset>
       </div>
-
-      <footer className="absolute bottom-8 text-center text-muted-foreground/80">
-        <p>Powered by Cloudflare</p>
-      </footer>
-
-      <Toaster richColors closeButton />
-    </div>
-  )
+      <SettingsModal />
+      <Toaster position="top-center" richColors />
+    </SidebarProvider>
+  );
 }

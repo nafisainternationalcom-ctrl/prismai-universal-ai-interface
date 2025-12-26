@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import type { SessionInfo, ProviderConfig } from '../../worker/types';
-export interface AppState {
+interface AppState {
   activeSessionId: string | null;
   sessions: SessionInfo[];
   sidebarOpen: boolean;
@@ -23,24 +23,17 @@ export const useAppStore = create<AppState>()(
       globalConfig: {
         baseUrl: '',
         apiKey: '',
-        model: '@cf/meta/llama-3.1-8b-instruct'
+        model: 'google-ai-studio/gemini-2.5-flash'
       },
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setSessions: (sessions) => set({ sessions }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setSettingsOpen: (open) => set({ settingsOpen: open }),
-      setGlobalConfig: (config) => set((state) => ({
-        globalConfig: { ...state.globalConfig, ...config }
-      })),
+      setGlobalConfig: (config) => set((state) => ({ globalConfig: { ...state.globalConfig, ...config } })),
     }),
     {
-      name: 'nafisa-ai-storage',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        globalConfig: state.globalConfig,
-        sidebarOpen: state.sidebarOpen,
-        activeSessionId: state.activeSessionId
-      }),
+      name: 'prismai-storage',
+      partialize: (state) => ({ globalConfig: state.globalConfig }),
     }
   )
 );
