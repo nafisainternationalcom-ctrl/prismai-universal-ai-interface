@@ -6,19 +6,20 @@ import { chatService, CLOUDFLARE_MODELS, EXTERNAL_MODELS, getModelLabel, isCloud
 import { Toaster } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { 
-  SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu, 
-  SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarGroupLabel, 
-  SidebarMenuAction, Sidebar, SidebarProvider, SidebarInset, SidebarTrigger 
+import {
+  SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu,
+  SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarGroupLabel,
+  SidebarMenuAction, Sidebar, SidebarProvider, SidebarInset, SidebarTrigger
 } from '@/components/ui/sidebar';
-import { 
-  Select, SelectContent, SelectGroup, SelectItem, 
-  SelectLabel, SelectTrigger, SelectValue 
+import {
+  Select, SelectContent, SelectGroup, SelectItem,
+  SelectLabel, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Plus, Settings, Trash2, Bot, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 export function HomePage() {
+  // Zustand Zero-Tolerance Rule: Primitive selectors only
   const activeSessionId = useAppStore(s => s.activeSessionId);
   const setActiveSessionId = useAppStore(s => s.setActiveSessionId);
   const sessions = useAppStore(s => s.sessions);
@@ -27,27 +28,39 @@ export function HomePage() {
   const globalConfig = useAppStore(s => s.globalConfig);
   const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
   const refreshSessions = useCallback(async () => {
-    const res = await chatService.listSessions();
-    if (res.success && res.data) {
-      setSessions(res.data);
+    try {
+      const res = await chatService.listSessions();
+      if (res.success && res.data) {
+        setSessions(res.data);
+      }
+    } catch (error) {
+      console.error('Failed to refresh sessions:', error);
     }
   }, [setSessions]);
   useEffect(() => {
     refreshSessions();
   }, [refreshSessions]);
   const createNewChat = async () => {
-    const res = await chatService.createSession();
-    if (res.success && res.data) {
-      setActiveSessionId(res.data.sessionId);
-      await refreshSessions();
+    try {
+      const res = await chatService.createSession();
+      if (res.success && res.data) {
+        setActiveSessionId(res.data.sessionId);
+        await refreshSessions();
+      }
+    } catch (error) {
+      toast.error('Failed to create new chat');
     }
   };
   const deleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const res = await chatService.deleteSession(id);
-    if (res.success) {
-      if (activeSessionId === id) setActiveSessionId(null);
-      await refreshSessions();
+    try {
+      const res = await chatService.deleteSession(id);
+      if (res.success) {
+        if (activeSessionId === id) setActiveSessionId(null);
+        await refreshSessions();
+      }
+    } catch (error) {
+      toast.error('Failed to delete session');
     }
   };
   const handleModelChange = async (newModelId: string) => {
@@ -80,7 +93,10 @@ export function HomePage() {
             <SidebarGroup>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={createNewChat} className="w-full justify-start gap-2 bg-accent/50 hover:bg-accent text-accent-foreground font-medium py-6 px-4">
+                  <SidebarMenuButton 
+                    onClick={createNewChat} 
+                    className="w-full justify-start gap-2 bg-accent/50 hover:bg-accent text-accent-foreground font-medium py-6 px-4"
+                  >
                     <Plus size={18} />
                     <span>New Chat</span>
                   </SidebarMenuButton>
@@ -88,7 +104,9 @@ export function HomePage() {
               </SidebarMenu>
             </SidebarGroup>
             <SidebarGroup>
-              <SidebarGroupLabel className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Recent Conversations</SidebarGroupLabel>
+              <SidebarGroupLabel className="px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Recent Conversations
+              </SidebarGroupLabel>
               <SidebarMenu className="px-2">
                 {sessions.map((session) => (
                   <SidebarMenuItem key={session.id}>
@@ -112,7 +130,11 @@ export function HomePage() {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="border-t border-border/50 p-2">
-            <Button variant="ghost" className="w-full justify-start gap-3 py-6 px-4 hover:bg-accent/50" onClick={() => setSettingsOpen(true)}>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-3 py-6 px-4 hover:bg-accent/50" 
+              onClick={() => setSettingsOpen(true)}
+            >
               <Settings size={18} className="text-muted-foreground" />
               <span className="font-medium">Settings</span>
             </Button>
@@ -129,7 +151,7 @@ export function HomePage() {
             <div className="flex items-center gap-2">
               {activeSessionId && (
                 <div className="hidden sm:flex items-center gap-2">
-                  <Select value={globalConfig.model} onValueChange={handleModelChange}>
+                  <Select value={globalConfig?.model || ''} onValueChange={handleModelChange}>
                     <SelectTrigger className="h-8 text-xs bg-muted/50 border-none w-[160px]">
                       <SelectValue placeholder="Model" />
                     </SelectTrigger>
@@ -153,7 +175,7 @@ export function HomePage() {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  {isCloudflareModel(globalConfig.model || '') && (
+                  {isCloudflareModel(globalConfig?.model || '') && (
                     <Badge variant="secondary" className="h-5 text-[10px] bg-primary/10 text-primary border-none">
                       Edge
                     </Badge>
