@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/lib/stores';
 import { CLOUDFLARE_MODELS, EXTERNAL_MODELS, isCloudflareModel, chatService } from '@/lib/chat';
 import { toast } from 'sonner';
-import { Info, ShieldCheck, Zap, Globe } from 'lucide-react';
+import { Info, ShieldCheck, Zap, Globe, Sparkles } from 'lucide-react';
 export function SettingsModal() {
   const open = useAppStore(s => s.settingsOpen);
   const setOpen = useAppStore(s => s.setSettingsOpen);
@@ -31,7 +31,7 @@ export function SettingsModal() {
       await chatService.updateSessionConfig(form);
     }
     setOpen(false);
-    toast.success('Configuration saved and applied to session');
+    toast.success('Nafisa configuration updated');
   };
   const selectCloudflareModel = (modelId: string) => {
     setForm({
@@ -55,123 +55,133 @@ export function SettingsModal() {
   const providers = Array.from(new Set(EXTERNAL_MODELS.map(m => m.provider)));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            AI Workspace Settings
-          </DialogTitle>
-          <DialogDescription>
-            Configure your preferred AI models and API providers.
-          </DialogDescription>
-        </DialogHeader>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="py-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="cloudflare" className="flex items-center gap-1.5">
-              <Zap size={14} /> Cloudflare AI
-            </TabsTrigger>
-            <TabsTrigger value="byok" className="flex items-center gap-1.5">
-              <ShieldCheck size={14} /> External (BYOK)
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="cloudflare" className="space-y-4 pt-4">
-            <div className="rounded-lg bg-accent/30 p-3 border border-accent/50 text-xs text-muted-foreground flex gap-2">
-              <Info className="shrink-0 text-primary" size={16} />
-              <p>Built-in models run instantly on Cloudflare Workers AI. No API key or extra setup required.</p>
-            </div>
-            <div className="grid gap-2">
-              <Label>Model Selection</Label>
-              <Select value={form.model} onValueChange={selectCloudflareModel}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a Cloudflare model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Workers AI Models</SelectLabel>
-                    {CLOUDFLARE_MODELS.map(m => (
-                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="mt-4 p-4 rounded-xl border border-dashed border-border bg-muted/20 flex flex-col items-center justify-center text-center">
-              <Badge variant="outline" className="mb-2 bg-primary/10 text-primary border-primary/20">
-                Automatic Setup
-              </Badge>
-              <p className="text-[11px] text-muted-foreground">
-                Base URL and API Key are handled internally at the Edge.
-              </p>
-            </div>
-          </TabsContent>
-          <TabsContent value="byok" className="space-y-4 pt-4">
-            <div className="space-y-3">
-              <Label className="text-xs text-muted-foreground">Provider Presets</Label>
-              <div className="flex flex-wrap gap-2">
-                {providers.map(p => (
-                  <Button
-                    key={p}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-[11px] gap-1.5"
-                    onClick={() => applyPreset(p)}
-                  >
-                    <Globe size={12} /> {p}
-                  </Button>
-                ))}
+      <DialogContent className="sm:max-w-[540px] glass-panel border-white/10 p-0 overflow-hidden rounded-3xl">
+        <div className="bg-gradient-rainbow h-1 w-full" />
+        <div className="p-6">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="flex items-center gap-3 text-2xl font-black tracking-tight">
+              <div className="h-8 w-8 rounded-lg bg-gradient-rainbow flex items-center justify-center text-white shadow-lg">
+                <Sparkles size={18} />
               </div>
-            </div>
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="baseUrl">Base URL</Label>
-                <Input
-                  id="baseUrl"
-                  placeholder="https://api.openai.com/v1"
-                  value={form.baseUrl}
-                  onChange={e => setForm({...form, baseUrl: e.target.value})}
-                />
+              <span className="text-gradient-vibrant">Nafisa Workspace</span>
+            </DialogTitle>
+            <DialogDescription className="font-medium text-muted-foreground/80">
+              Manage your edge intelligence nodes and API gateways.
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-accent/20 h-11 p-1 rounded-xl">
+              <TabsTrigger value="cloudflare" className="rounded-lg font-bold text-xs uppercase tracking-widest data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+                <Zap size={14} className="mr-2" /> Native AI
+              </TabsTrigger>
+              <TabsTrigger value="byok" className="rounded-lg font-bold text-xs uppercase tracking-widest data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+                <ShieldCheck size={14} className="mr-2" /> BYOK Nodes
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="cloudflare" className="space-y-5 mt-6 animate-in fade-in slide-in-from-bottom-2">
+              <div className="rounded-2xl bg-orange-500/5 p-4 border border-orange-500/20 text-[13px] text-orange-500/80 font-medium flex gap-3">
+                <Info className="shrink-0 mt-0.5" size={18} />
+                <p>Native models are optimized for ultra-low latency via Cloudflare's global edge network. No external API keys required.</p>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="apiKey">API Key</Label>
-                <Input
-                  id="apiKey"
-                  type="password"
-                  placeholder="sk-..."
-                  value={form.apiKey}
-                  onChange={e => setForm({...form, apiKey: e.target.value})}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="model">Model Name</Label>
-                <div className="flex gap-2">
-                  <Select value={form.model} onValueChange={m => setForm({...form, model: m})}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select preset or type..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {providers.map(p => (
-                        <SelectGroup key={p}>
-                          <SelectLabel>{p}</SelectLabel>
-                          {EXTERNAL_MODELS.filter(m => m.provider === p).map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                          ))}
-                        </SelectGroup>
+              <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Edge Model Selection</Label>
+                <Select value={form.model} onValueChange={selectCloudflareModel}>
+                  <SelectTrigger className="h-12 bg-accent/20 border-white/5 rounded-xl font-semibold">
+                    <SelectValue placeholder="Select a Nafisa Native model" />
+                  </SelectTrigger>
+                  <SelectContent className="glass-panel border-white/10">
+                    <SelectGroup>
+                      <SelectLabel className="text-[10px] font-black uppercase tracking-widest text-orange-500 px-3 py-2">Edge Optimized</SelectLabel>
+                      {CLOUDFLARE_MODELS.map(m => (
+                        <SelectItem key={m.id} value={m.id} className="font-medium">{m.name}</SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    className="w-1/3"
-                    placeholder="Custom ID"
-                    value={form.model}
-                    onChange={e => setForm({...form, model: e.target.value})}
-                  />
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="p-6 rounded-2xl border-2 border-dashed border-white/5 bg-accent/5 flex flex-col items-center justify-center text-center">
+                <Badge className="mb-3 bg-orange-500/20 text-orange-500 border-none font-black uppercase tracking-widest px-4 py-1">
+                  Nafisa Auto-Node
+                </Badge>
+                <p className="text-[11px] text-muted-foreground font-medium max-w-[240px]">
+                  Internal routing and key management are handled at the Edge for maximum security.
+                </p>
+              </div>
+            </TabsContent>
+            <TabsContent value="byok" className="space-y-6 mt-6 animate-in fade-in slide-in-from-bottom-2">
+              <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Gateway Presets</Label>
+                <div className="flex flex-wrap gap-2">
+                  {providers.map(p => (
+                    <Button
+                      key={p}
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-4 text-[11px] font-bold gap-2 rounded-lg border-white/5 bg-white/5 hover:bg-indigo-600 hover:text-white transition-all"
+                      onClick={() => applyPreset(p)}
+                    >
+                      <Globe size={14} /> {p}
+                    </Button>
+                  ))}
                 </div>
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-        <DialogFooter className="pt-4 border-t border-border/50">
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} className="bg-primary text-primary-foreground px-8">Save & Apply</Button>
+              <div className="grid gap-4 bg-accent/10 p-5 rounded-2xl border border-white/5">
+                <div className="space-y-2">
+                  <Label htmlFor="baseUrl" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Node Gateway URL</Label>
+                  <Input
+                    id="baseUrl"
+                    placeholder="https://api.openai.com/v1"
+                    className="h-11 bg-background/50 border-white/10 rounded-xl"
+                    value={form.baseUrl}
+                    onChange={e => setForm({...form, baseUrl: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apiKey" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Secure API Key</Label>
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    placeholder="sk-���•••••••••••••••"
+                    className="h-11 bg-background/50 border-white/10 rounded-xl"
+                    value={form.apiKey}
+                    onChange={e => setForm({...form, apiKey: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Intelligence Node</Label>
+                  <div className="flex gap-2">
+                    <Select value={form.model} onValueChange={m => setForm({...form, model: m})}>
+                      <SelectTrigger className="flex-1 h-11 bg-background/50 border-white/10 rounded-xl font-bold">
+                        <SelectValue placeholder="Preset" />
+                      </SelectTrigger>
+                      <SelectContent className="glass-panel border-white/10">
+                        {providers.map(p => (
+                          <SelectGroup key={p}>
+                            <SelectLabel className="text-[10px] font-black uppercase tracking-widest opacity-50 px-3">{p}</SelectLabel>
+                            {EXTERNAL_MODELS.filter(m => m.provider === p).map(m => (
+                              <SelectItem key={m.id} value={m.id} className="font-medium">{m.name}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      className="w-1/3 h-11 bg-background/50 border-white/10 rounded-xl font-mono text-[11px]"
+                      placeholder="Custom ID"
+                      value={form.model}
+                      onChange={e => setForm({...form, model: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+        <DialogFooter className="bg-accent/20 p-6 flex gap-3 border-t border-white/5">
+          <Button variant="ghost" onClick={() => setOpen(false)} className="rounded-xl font-bold h-11 px-6">Discard</Button>
+          <Button onClick={handleSave} className="bg-gradient-rainbow text-white px-10 h-11 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-orange-500/20 active:scale-95 transition-all">
+            Save Config
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

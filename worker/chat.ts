@@ -121,7 +121,7 @@ export class ChatHandler {
     conversationHistory: Message[]
   ) {
     const responseMessage = completion.choices[0]?.message;
-    if (!responseMessage) return { content: 'No response from model.' };
+    if (!responseMessage) return { content: 'Node returned empty response.' };
     if (responseMessage.tool_calls) {
       const toolCalls = await this.executeToolCalls(responseMessage.tool_calls as ChatCompletionMessageFunctionToolCall[]);
       const finalResponse = await this.generateToolResponse(message, conversationHistory, responseMessage.tool_calls as any[], toolCalls);
@@ -147,19 +147,22 @@ export class ChatHandler {
     const completion = await this.client.chat.completions.create({
       model: this.model,
       messages: [
-        { role: 'system', content: 'Respond concisely based on the provided tool results.' },
+        { role: 'system', content: 'You are Nafisa AI. Respond concisely based on the provided tool results.' },
         ...history.slice(-10).map(m => ({ role: m.role as any, content: m.content })),
         { role: 'user', content: userMsg },
         { role: 'assistant', content: null, tool_calls: calls },
-        ...results.map((r, i) => ({ role: 'tool' as const, content: JSON.stringify(r.result), tool_call_id: r.id }))
+        ...results.map((r) => ({ role: 'tool' as const, content: JSON.stringify(r.result), tool_call_id: r.id }))
       ]
     });
     return completion.choices[0]?.message?.content || '';
   }
   private buildConversationMessages(userMessage: string, history: Message[]) {
     return [
-      { role: 'system' as const, content: 'You are PrismAI, a sophisticated AI assistant. Help the user with their queries accurately.' },
-      ...history.slice(-10).map(m => ({ role: m.role, content: m.content })),
+      { 
+        role: 'system' as const, 
+        content: 'You are Nafisa AI, a sophisticated and helpful universal AI interface developed for high-performance edge computing. Help the user with their queries accurately and maintain a professional yet engaging persona.' 
+      },
+      ...history.slice(-15).map(m => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: userMessage }
     ];
   }

@@ -29,16 +29,16 @@ export const useAppStore = create<AppState>()(
       setSessions: (sessions) => set({ sessions }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setSettingsOpen: (open) => set({ settingsOpen: open }),
-      setGlobalConfig: (config) => set((state) => ({ 
-        globalConfig: { ...state.globalConfig, ...config } 
+      setGlobalConfig: (config) => set((state) => ({
+        globalConfig: { ...state.globalConfig, ...config }
       })),
     }),
     {
-      name: 'prismai-storage',
+      name: 'nafisa-ai-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         globalConfig: state.globalConfig,
-        sidebarOpen: state.sidebarOpen 
+        sidebarOpen: state.sidebarOpen
       }),
     }
   )
