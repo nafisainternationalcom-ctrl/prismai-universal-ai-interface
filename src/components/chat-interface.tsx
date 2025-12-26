@@ -100,12 +100,12 @@ export function ChatInterface() {
             Experience the future of universal AI. Low latency, high precision, running entirely at the edge.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-3xl relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl relative z-10">
           {CLOUDFLARE_MODELS.slice(0, 3).map((m, idx) => (
-            <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }}>
+            <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} className="aspect-[4/3] md:aspect-auto">
               <Button
                 variant="outline"
-                className="h-full w-full py-6 px-6 flex-col gap-4 bg-background/40 backdrop-blur-md border-white/5 hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group rounded-2xl shadow-sm"
+                className="h-full w-full py-6 px-6 flex-col gap-4 bg-background/40 backdrop-blur-md border-white/5 hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group rounded-3xl shadow-soft"
                 onClick={() => {
                   chatService.createSession(m.name).then(res => {
                     if (res.success && res.data) {
@@ -115,15 +115,12 @@ export function ChatInterface() {
                   });
                 }}
               >
-                <div className="bg-orange-500/10 p-3 rounded-xl text-orange-500 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all duration-300">
-                  {m.category === 'Coding' ? <Terminal size={22} /> : <Cpu size={22} />}
+                <div className="bg-orange-500/10 p-4 rounded-2xl text-orange-500 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all duration-300">
+                  {m.category === 'Coding' ? <Terminal size={24} /> : <Cpu size={24} />}
                 </div>
                 <div className="text-center space-y-1">
                   <div className="text-sm font-bold tracking-tight">{m.name}</div>
                   <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{m.category}</div>
-                </div>
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <MousePointer2 size={12} className="text-orange-500" />
                 </div>
               </Button>
             </motion.div>
@@ -192,13 +189,13 @@ export function ChatInterface() {
             </div>
             {isLoading && (
               <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
+                <div className="flex gap-2">
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      animate={{ y: [0, -6, 0], scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                      transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15, ease: "easeInOut" }}
-                      className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"
+                      animate={{ y: [0, -8, 0], scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: i * 0.2, ease: "easeInOut" }}
+                      className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]"
                     />
                   ))}
                 </div>

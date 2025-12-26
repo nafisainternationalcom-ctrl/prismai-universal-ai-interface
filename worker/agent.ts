@@ -18,19 +18,21 @@ export class ChatAgent extends Agent<Env, ChatState> {
     const baseUrl = config.baseUrl || this.env.CF_AI_BASE_URL || '';
     const apiKey = config.apiKey || this.env.CF_AI_API_KEY || '';
     const model = config.model || this.state.model;
+    const sessionId = this.ctx.id.toString();
     if (!baseUrl?.startsWith('http') || !apiKey || baseUrl.includes('YOUR') || apiKey === 'YOUR_API_KEY') {
-      console.warn(`[ChatAgent] Invalid AI config for session ${this.id}. BaseUrl: ${baseUrl}`);
+      console.warn(`[ChatAgent] Missing AI Node config for session ${sessionId}. Please configure API keys in Workspace Settings.`);
       return;
     }
     try {
       this.chatHandler = new ChatHandler(baseUrl, apiKey, model);
     } catch (e) {
-      console.error(`[ChatAgent] Initialization failed for session ${this.id}:`, e);
+      console.error(`[ChatAgent] Initialization failed for session ${sessionId}:`, e);
     }
   }
   async onRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const method = request.method;
+    const sessionId = this.ctx.id.toString();
     if (method === 'GET' && url.pathname === '/messages') {
       return Response.json({ success: true, data: this.state });
     }
@@ -71,22 +73,19 @@ export class ChatAgent extends Agent<Env, ChatState> {
     if (!message?.trim()) {
       return Response.json({ success: false, error: API_RESPONSES.MISSING_MESSAGE }, { status: 400 });
     }
-    // Force model synchronization if missing or changed
     const targetModel = model || this.state.model;
     if (targetModel !== this.state.model) {
       this.setState({ ...this.state, model: targetModel });
     }
     if (!this.chatHandler) {
-      // Lazy attempt to recover handler if it failed at onStart due to empty config
       await this.onStart();
       if (!this.chatHandler) {
         return Response.json({
           success: false,
-          error: 'AI Node configuration invalid. Check your API key and Base URL in settings.'
+          error: 'AI Node configuration invalid. Check your API key and Base URL in Workspace Settings.'
         }, { status: 503 });
       }
     }
-    // Ensure model is updated in handler before processing
     this.chatHandler.updateModel(targetModel);
     const userMsg = createMessage('user', message.trim());
     this.setState({
