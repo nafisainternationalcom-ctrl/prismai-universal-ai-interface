@@ -38,7 +38,8 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         globalConfig: state.globalConfig,
-        sidebarOpen: state.sidebarOpen
+        sidebarOpen: state.sidebarOpen,
+        activeSessionId: state.activeSessionId
       }),
     }
   )

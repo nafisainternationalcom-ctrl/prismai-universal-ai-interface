@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Send, Sparkles, AlertCircle, Zap, Cpu, Terminal, Globe, MousePointer2 } from 'lucide-react';
+import { Send, Sparkles, Zap, Cpu, Terminal, Globe, MousePointer2 } from 'lucide-react';
 import { ChatMessage } from './chat-message';
 import { chatService, CLOUDFLARE_MODELS, isCloudflareModel, getModelLabel } from '@/lib/chat';
 import { useAppStore } from '@/lib/stores';
@@ -21,6 +21,7 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastSyncedConfig = useRef<string | null>(null);
   const loadMessages = useCallback(async () => {
     const res = await chatService.getMessages();
     if (res.success && res.data) {
@@ -31,9 +32,14 @@ export function ChatInterface() {
     if (activeSessionId) {
       chatService.switchSession(activeSessionId);
       loadMessages();
-      chatService.updateSessionConfig(globalConfig);
+      const configStr = JSON.stringify(globalConfig);
+      if (lastSyncedConfig.current !== configStr) {
+        chatService.updateSessionConfig(globalConfig);
+        lastSyncedConfig.current = configStr;
+      }
     } else {
       setMessages([]);
+      lastSyncedConfig.current = null;
     }
   }, [activeSessionId, globalConfig, loadMessages]);
   useEffect(() => {
@@ -42,8 +48,8 @@ export function ChatInterface() {
     }
   }, [messages, streamingContent]);
   const handleSend = async () => {
-    if (!input.trim() || isLoading || !activeSessionId) return;
     const userPrompt = input.trim();
+    if (!userPrompt || isLoading || !activeSessionId) return;
     setInput('');
     setIsLoading(true);
     setStreamingContent('');
@@ -60,7 +66,7 @@ export function ChatInterface() {
     if (res.success) {
       await loadMessages();
     } else {
-      toast.error(res.error || 'Connection interupted');
+      toast.error(res.error || 'Connection interrupted');
     }
     setStreamingContent('');
     setIsLoading(false);
@@ -82,11 +88,7 @@ export function ChatInterface() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-10 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-orange-500/5 via-transparent to-transparent pointer-events-none" />
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative">
           <div className="h-28 w-28 bg-gradient-rainbow rounded-[2.5rem] flex items-center justify-center text-white rotate-6 shadow-2xl shadow-orange-500/40 relative z-10 animate-float-slow">
             <Sparkles size={56} />
           </div>
@@ -100,12 +102,7 @@ export function ChatInterface() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-3xl relative z-10">
           {CLOUDFLARE_MODELS.slice(0, 3).map((m, idx) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * idx }}
-            >
+            <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }}>
               <Button
                 variant="outline"
                 className="h-full w-full py-6 px-6 flex-col gap-4 bg-background/40 backdrop-blur-md border-white/5 hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group rounded-2xl shadow-sm"
@@ -144,17 +141,8 @@ export function ChatInterface() {
           ))}
           <AnimatePresence>
             {streamingContent && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-              >
-                <ChatMessage message={{
-                  id: 'streaming',
-                  role: 'assistant',
-                  content: streamingContent,
-                  timestamp: Date.now()
-                }} />
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <ChatMessage message={{ id: 'streaming', role: 'assistant', content: streamingContent, timestamp: Date.now() }} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -203,11 +191,16 @@ export function ChatInterface() {
                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.15em]">Secure TLS 1.3</span>
             </div>
             {isLoading && (
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <motion.div animate={{ scale: [1, 1.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="h-1 w-1 rounded-full bg-orange-500" />
-                  <motion.div animate={{ scale: [1, 1.5, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="h-1 w-1 rounded-full bg-orange-500" />
-                  <motion.div animate={{ scale: [1, 1.5, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="h-1 w-1 rounded-full bg-orange-500" />
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ y: [0, -6, 0], scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                      transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15, ease: "easeInOut" }}
+                      className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"
+                    />
+                  ))}
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-orange-500">Nafisa Thinking</span>
               </div>

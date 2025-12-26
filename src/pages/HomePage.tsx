@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ChatInterface } from '@/components/chat-interface';
 import { SettingsModal } from '@/components/settings-modal';
@@ -28,16 +28,25 @@ export function HomePage() {
   const setSettingsOpen = useAppStore(s => s.setSettingsOpen);
   const globalConfig = useAppStore(useShallow(s => s.globalConfig));
   const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
+  const initialLoadDone = useRef(false);
   const refreshSessions = useCallback(async () => {
     try {
       const res = await chatService.listSessions();
       if (res.success && res.data) {
         setSessions(res.data);
+        // Validate persisted session ID
+        if (activeSessionId && !initialLoadDone.current) {
+          const exists = res.data.some(s => s.id === activeSessionId);
+          if (!exists) {
+            setActiveSessionId(null);
+          }
+          initialLoadDone.current = true;
+        }
       }
     } catch (error) {
       console.error('Failed to refresh sessions:', error);
     }
-  }, [setSessions]);
+  }, [activeSessionId, setActiveSessionId, setSessions]);
   useEffect(() => {
     refreshSessions();
   }, [refreshSessions]);
@@ -83,7 +92,6 @@ export function HomePage() {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full overflow-hidden bg-background relative">
-        {/* Particle Background */}
         <div className="absolute inset-0 particle-overlay pointer-events-none opacity-40 z-0" />
         <Sidebar className="border-r border-border/50 bg-background/80 backdrop-blur-md z-10">
           <SidebarHeader className="border-b border-border/50 px-6 py-5">
@@ -123,20 +131,20 @@ export function HomePage() {
                       onClick={() => setActiveSessionId(session.id)}
                       className={cn(
                         "group py-6 px-4 rounded-xl transition-all relative pr-12 overflow-hidden",
-                        activeSessionId === session.id 
-                          ? "bg-accent/50 border border-white/5 shadow-sm" 
+                        activeSessionId === session.id
+                          ? "bg-accent/50 border border-white/5 shadow-sm"
                           : "hover:bg-accent/30"
                       )}
                     >
                       <MessageSquare size={16} className={cn("shrink-0", activeSessionId === session.id ? "text-orange-500" : "text-muted-foreground")} />
                       <span className="truncate font-medium text-sm ml-1">{session.title}</span>
-                      <SidebarMenuAction
-                        onClick={(e) => deleteSession(session.id, e)}
-                        className="opacity-0 group-hover:opacity-100 transition-all hover:text-destructive right-3 absolute"
-                      >
-                        <Trash2 size={14} />
-                      </SidebarMenuAction>
                     </SidebarMenuButton>
+                    <SidebarMenuAction
+                      onClick={(e) => deleteSession(session.id, e)}
+                      className="opacity-0 group-hover:opacity-100 transition-all hover:text-destructive right-3 top-1/2 -translate-y-1/2 absolute"
+                    >
+                      <Trash2 size={14} />
+                    </SidebarMenuAction>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -168,7 +176,10 @@ export function HomePage() {
               {activeSessionId && (
                 <div className="hidden lg:flex items-center gap-3">
                   <div className="relative group">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-rose-500 rounded-lg blur opacity-20 group-hover:opacity-40 transition animate-pulse-glow" />
+                    <div className={cn(
+                      "absolute -inset-0.5 rounded-lg blur opacity-20 group-hover:opacity-40 transition animate-pulse-glow",
+                      isCloudflareModel(globalConfig?.model || '') ? "bg-gradient-to-r from-orange-500 to-rose-500" : "bg-indigo-500"
+                    )} />
                     <Select value={globalConfig?.model || ''} onValueChange={handleModelChange}>
                       <SelectTrigger className="h-9 text-[11px] font-bold bg-background/50 border-white/5 w-[200px] rounded-lg focus:ring-1 ring-orange-500/50">
                         <SelectValue placeholder="Model" />
