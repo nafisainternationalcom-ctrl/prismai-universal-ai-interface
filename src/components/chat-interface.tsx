@@ -2,14 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Sparkles, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Send, Sparkles, AlertCircle, Zap, Cpu, Terminal } from 'lucide-react';
 import { ChatMessage } from './chat-message';
-import { chatService } from '@/lib/chat';
+import { chatService, CLOUDFLARE_MODELS, isCloudflareModel, getModelLabel } from '@/lib/chat';
 import { useAppStore } from '@/lib/stores';
 import type { Message } from '../../worker/types';
+import { toast } from 'sonner';
 export function ChatInterface() {
   const activeSessionId = useAppStore(s => s.activeSessionId);
   const globalConfig = useAppStore(s => s.globalConfig);
+  const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,12 +22,11 @@ export function ChatInterface() {
     if (activeSessionId) {
       chatService.switchSession(activeSessionId);
       loadMessages();
-      // Use dedicated config endpoint instead of sending a dummy message
       chatService.updateSessionConfig(globalConfig);
     } else {
       setMessages([]);
     }
-  }, [activeSessionId, globalConfig]);
+  }, [activeSessionId]);
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -49,21 +51,60 @@ export function ChatInterface() {
     });
     if (res.success) {
       await loadMessages();
+    } else {
+      toast.error(res.error || 'Failed to send message');
     }
     setStreamingContent('');
     setIsLoading(false);
   };
+  const startWithModel = async (modelId: string) => {
+    const isCF = isCloudflareModel(modelId);
+    const newConfig = { ...globalConfig, model: modelId, ...(isCF ? { baseUrl: '', apiKey: '' } : {}) };
+    setGlobalConfig(newConfig);
+    if (activeSessionId) {
+      await chatService.updateSessionConfig(newConfig);
+    }
+    toast.info(`Using ${getModelLabel(modelId)}`);
+  };
   if (!activeSessionId) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-        <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-          <Sparkles size={32} />
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
+        <div className="h-20 w-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary rotate-3">
+          <Sparkles size={40} />
         </div>
-        <h2 className="text-2xl font-bold">Welcome to PrismAI</h2>
-        <p className="text-muted-foreground max-w-sm">Create a new chat or select one from the sidebar to begin your journey.</p>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">PrismAI Edge</h2>
+          <p className="text-muted-foreground max-w-sm mx-auto">Select a model to start a high-speed conversation powered by Cloudflare.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
+          {CLOUDFLARE_MODELS.slice(0, 3).map(m => (
+            <Button 
+              key={m.id} 
+              variant="outline" 
+              className="h-auto py-4 px-4 flex-col gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+              onClick={() => {
+                chatService.createSession(m.name).then(res => {
+                  if (res.success && res.data) {
+                    useAppStore.getState().setActiveSessionId(res.data.sessionId);
+                    startWithModel(m.id);
+                  }
+                });
+              }}
+            >
+              <div className="bg-primary/10 p-2 rounded-lg text-primary group-hover:scale-110 transition-transform">
+                {m.category === 'Coding' ? <Terminal size={18} /> : <Cpu size={18} />}
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold">{m.name}</div>
+                <div className="text-[10px] text-muted-foreground">{m.category}</div>
+              </div>
+            </Button>
+          ))}
+        </div>
       </div>
     );
   }
+  const isByok = globalConfig.apiKey && globalConfig.apiKey.length > 5;
   return (
     <div className="flex-1 flex flex-col h-full bg-background relative">
       <ScrollArea className="flex-1">
@@ -85,10 +126,10 @@ export function ChatInterface() {
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent">
         <div className="max-w-3xl mx-auto">
           <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl blur opacity-20 group-focus-within:opacity-40 transition duration-1000"></div>
-            <div className="relative flex items-end gap-2 bg-secondary/80 backdrop-blur-sm border border-input rounded-xl p-2 shadow-sm">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-indigo-500 rounded-2xl blur opacity-10 group-focus-within:opacity-25 transition duration-500"></div>
+            <div className="relative flex items-end gap-2 bg-secondary/60 backdrop-blur-xl border border-input/50 rounded-2xl p-2 shadow-sm">
               <Textarea
-                placeholder="Message PrismAI..."
+                placeholder={`Message ${getModelLabel(globalConfig.model || '')}...`}
                 className="flex-1 min-h-[44px] max-h-48 bg-transparent border-0 focus-visible:ring-0 resize-none py-3 px-4"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -101,7 +142,7 @@ export function ChatInterface() {
               />
               <Button
                 size="icon"
-                className="mb-1 rounded-lg shrink-0 h-9 w-9"
+                className="mb-1 rounded-xl shrink-0 h-10 w-10 shadow-lg shadow-primary/20"
                 disabled={isLoading || !input.trim()}
                 onClick={handleSend}
               >
@@ -109,10 +150,25 @@ export function ChatInterface() {
               </Button>
             </div>
           </div>
-          <p className="text-[10px] text-center text-muted-foreground mt-2 px-4">
-            <AlertCircle size={10} className="inline mr-1 mb-0.5" />
-            Requests may be limited during high traffic. Bring Your Own Key (BYOK) for higher limits.
-          </p>
+          <div className="flex items-center justify-between mt-3 px-1">
+            <div className="flex items-center gap-2">
+               {isCloudflareModel(globalConfig.model || '') ? (
+                 <Badge variant="outline" className="text-[9px] h-4 bg-primary/5 border-primary/20 text-primary flex gap-1 items-center px-1.5">
+                   <Zap size={8} /> No API Key required
+                 </Badge>
+               ) : (
+                 <Badge variant="outline" className="text-[9px] h-4 flex gap-1 items-center px-1.5">
+                   <Cpu size={8} /> BYOK Enabled
+                 </Badge>
+               )}
+            </div>
+            {!isByok && (
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <AlertCircle size={10} className="text-amber-500" />
+                Default limits apply
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

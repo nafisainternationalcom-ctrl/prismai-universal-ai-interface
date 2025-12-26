@@ -2,18 +2,30 @@ import React, { useEffect, useCallback } from 'react';
 import { ChatInterface } from '@/components/chat-interface';
 import { SettingsModal } from '@/components/settings-modal';
 import { useAppStore } from '@/lib/stores';
-import { chatService } from '@/lib/chat';
+import { chatService, CLOUDFLARE_MODELS, EXTERNAL_MODELS, getModelLabel, isCloudflareModel } from '@/lib/chat';
 import { Toaster } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarGroupLabel, SidebarMenuAction, Sidebar, SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
-import { MessageSquare, Plus, Settings, Trash2, Bot } from 'lucide-react';
+import { 
+  SidebarHeader, SidebarContent, SidebarGroup, SidebarMenu, 
+  SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarGroupLabel, 
+  SidebarMenuAction, Sidebar, SidebarProvider, SidebarInset, SidebarTrigger 
+} from '@/components/ui/sidebar';
+import { 
+  Select, SelectContent, SelectGroup, SelectItem, 
+  SelectLabel, SelectTrigger, SelectValue 
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { MessageSquare, Plus, Settings, Trash2, Bot, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 export function HomePage() {
   const activeSessionId = useAppStore(s => s.activeSessionId);
   const setActiveSessionId = useAppStore(s => s.setActiveSessionId);
   const sessions = useAppStore(s => s.sessions);
   const setSessions = useAppStore(s => s.setSessions);
   const setSettingsOpen = useAppStore(s => s.setSettingsOpen);
+  const globalConfig = useAppStore(s => s.globalConfig);
+  const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
   const refreshSessions = useCallback(async () => {
     const res = await chatService.listSessions();
     if (res.success && res.data) {
@@ -38,6 +50,20 @@ export function HomePage() {
       await refreshSessions();
     }
   };
+  const handleModelChange = async (newModelId: string) => {
+    const isCF = isCloudflareModel(newModelId);
+    const newConfig = {
+      ...globalConfig,
+      model: newModelId,
+      ...(isCF ? { baseUrl: '', apiKey: '' } : {})
+    };
+    setGlobalConfig(newConfig);
+    if (activeSessionId) {
+      await chatService.updateSessionConfig(newConfig);
+      toast.success(`Switched to ${getModelLabel(newModelId)}`);
+    }
+  };
+  const activeSession = sessions.find(s => s.id === activeSessionId);
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -94,13 +120,48 @@ export function HomePage() {
         </Sidebar>
         <SidebarInset className="flex flex-col relative">
           <header className="h-14 flex items-center px-4 border-b border-border/50 bg-background/50 backdrop-blur-md z-10 sticky top-0 justify-between">
-            <div className="flex items-center min-w-0">
+            <div className="flex items-center min-w-0 flex-1">
               <SidebarTrigger className="mr-4" />
-              <div className="font-medium text-sm text-muted-foreground truncate">
-                {sessions.find(s => s.id === activeSessionId)?.title || "Select a session"}
+              <div className="font-medium text-sm text-muted-foreground truncate max-w-[200px] md:max-w-md">
+                {activeSession?.title || "Select a session"}
               </div>
             </div>
-            <ThemeToggle className="relative right-0 top-0" />
+            <div className="flex items-center gap-2">
+              {activeSessionId && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <Select value={globalConfig.model} onValueChange={handleModelChange}>
+                    <SelectTrigger className="h-8 text-xs bg-muted/50 border-none w-[160px]">
+                      <SelectValue placeholder="Model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Cloudflare AI</SelectLabel>
+                        {CLOUDFLARE_MODELS.map(m => (
+                          <SelectItem key={m.id} value={m.id}>
+                            <div className="flex items-center gap-1.5">
+                              <Zap size={12} className="text-primary" />
+                              {m.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>External</SelectLabel>
+                        {EXTERNAL_MODELS.map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {isCloudflareModel(globalConfig.model || '') && (
+                    <Badge variant="secondary" className="h-5 text-[10px] bg-primary/10 text-primary border-none">
+                      Edge
+                    </Badge>
+                  )}
+                </div>
+              )}
+              <ThemeToggle className="relative right-0 top-0" />
+            </div>
           </header>
           <ChatInterface />
         </SidebarInset>

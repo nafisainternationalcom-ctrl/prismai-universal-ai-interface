@@ -10,16 +10,16 @@ export class ChatAgent extends Agent<Env, ChatState> {
     messages: [],
     sessionId: '',
     isProcessing: false,
-    model: 'google-ai-studio/gemini-2.5-flash',
+    model: '@cf/meta/llama-3.1-8b-instruct',
     config: {}
   };
   async onStart(): Promise<void> {
     const config = this.state.config ?? {};
-    this.chatHandler = new ChatHandler(
-      config.baseUrl || this.env.CF_AI_BASE_URL,
-      config.apiKey || this.env.CF_AI_API_KEY,
-      config.model || this.state.model
-    );
+    // Ensure strict fallback for built-in Cloudflare AI Gateway/Workers AI
+    const baseUrl = config.baseUrl || this.env.CF_AI_BASE_URL;
+    const apiKey = config.apiKey || this.env.CF_AI_API_KEY;
+    const model = config.model || this.state.model;
+    this.chatHandler = new ChatHandler(baseUrl, apiKey, model);
   }
   async onRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -33,12 +33,19 @@ export class ChatAgent extends Agent<Env, ChatState> {
     if (method === 'POST' && url.pathname === '/config') {
       const config = await request.json() as ProviderConfig;
       const updatedConfig = { ...this.state.config, ...config };
-      this.setState({ 
-        ...this.state, 
+      const newModel = config.model || this.state.model;
+      this.setState({
+        ...this.state,
         config: updatedConfig,
-        model: config.model || this.state.model
+        model: newModel
       });
-      this.chatHandler?.updateConfig(updatedConfig);
+      // Update ChatHandler with strictly prioritized values
+      this.chatHandler?.updateConfig({
+        ...updatedConfig,
+        baseUrl: updatedConfig.baseUrl || this.env.CF_AI_BASE_URL,
+        apiKey: updatedConfig.apiKey || this.env.CF_AI_API_KEY,
+        model: newModel
+      });
       return Response.json({ success: true, data: this.state });
     }
     if (method === 'DELETE' && url.pathname === '/clear') {
@@ -50,7 +57,9 @@ export class ChatAgent extends Agent<Env, ChatState> {
   private async handleChatMessage(body: { message: string; stream?: boolean; model?: string }): Promise<Response> {
     const { message, stream, model } = body;
     if (!message?.trim()) return Response.json({ success: false, error: API_RESPONSES.MISSING_MESSAGE }, { status: 400 });
-    if (model) {
+    // If model is provided in request, update state and handler to ensure session persistence
+    if (model && model !== this.state.model) {
+      this.setState({ ...this.state, model });
       this.chatHandler?.updateModel(model);
     }
     const userMsg = createMessage('user', message.trim());

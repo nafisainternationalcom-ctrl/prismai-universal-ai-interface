@@ -1,14 +1,34 @@
-import type { Message, ChatState, ToolCall, WeatherResult, MCPResult, ErrorResult, SessionInfo, ProviderConfig } from '../../worker/types';
+import type { Message, ChatState, ToolCall, SessionInfo, ProviderConfig } from '../../worker/types';
 export interface ChatResponse {
   success: boolean;
   data?: ChatState;
   error?: string;
 }
-export const MODELS = [
-  { id: 'google-ai-studio/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-  { id: 'google-ai-studio/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-  { id: 'google-ai-studio/gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+export const CLOUDFLARE_MODELS = [
+  { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', category: 'General' },
+  { id: '@cf/meta/llama-3-8b-instruct', name: 'Llama 3 8B', category: 'General' },
+  { id: '@cf/mistral/mistral-7b-instruct-v0.2', name: 'Mistral 7B v0.2', category: 'General' },
+  { id: '@cf/google/gemma-2-9b-it', name: 'Gemma 2 9B', category: 'General' },
+  { id: '@cf/qwen/qwen2.5-7b-instruct', name: 'Qwen 2.5 7B', category: 'General' },
+  { id: '@cf/microsoft/phi-3.5-mini-instruct', name: 'Phi 3.5 Mini', category: 'Lightweight' },
+  { id: '@cf/deepseek-ai/deepseek-coder-6.7b-instruct', name: 'DeepSeek Coder 6.7B', category: 'Coding' },
 ];
+export const EXTERNAL_MODELS = [
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
+  { id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'OpenRouter' },
+];
+export const getModelLabel = (modelId: string): string => {
+  const cfModel = CLOUDFLARE_MODELS.find(m => m.id === modelId);
+  if (cfModel) return cfModel.name;
+  const extModel = EXTERNAL_MODELS.find(m => m.id === modelId);
+  if (extModel) return extModel.name;
+  return modelId.split('/').pop() || modelId;
+};
+export const isCloudflareModel = (modelId: string): boolean => {
+  return modelId.startsWith('@cf/') || CLOUDFLARE_MODELS.some(m => m.id === modelId);
+};
 class ChatService {
   private sessionId: string;
   private baseUrl: string;
@@ -147,29 +167,4 @@ class ChatService {
 export const chatService = new ChatService();
 export const formatTime = (timestamp: number): string => {
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
-export const generateSessionTitle = (firstUserMessage?: string): string => {
-  const now = new Date();
-  const dateTime = now.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-  if (!firstUserMessage || !firstUserMessage.trim() || firstUserMessage.length < 2) {
-    return `Chat ${dateTime}`;
-  }
-  const cleanMessage = firstUserMessage.trim().replace(/\s+/g, ' ');
-  const truncated = cleanMessage.length > 40
-    ? cleanMessage.slice(0, 37) + '...'
-    : cleanMessage;
-  return `${truncated} • ${dateTime}`;
-};
-export const renderToolCall = (toolCall: ToolCall): string => {
-  const result = toolCall.result as any;
-  if (!result) return `⚠️ ${toolCall.name}: No result`;
-  if ('error' in result) return `❌ ${toolCall.name}: ${result.error}`;
-  if (toolCall.name === 'get_weather') {
-    return `🌤️ Weather in ${result.location}: ${result.temperature}°C, ${result.condition}`;
-  }
-  if (toolCall.name === 'web_search' && result.content) {
-    const snippet = result.content.slice(0, 50).replace(/\n/g, ' ') + '...';
-    return `🔍 Search "${toolCall.arguments.query || 'Web'}": ${snippet}`;
-  }
-  return `🔧 ${toolCall.name}: Done`;
 };
