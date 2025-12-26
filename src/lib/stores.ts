@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SessionInfo, ProviderConfig } from '../../worker/types';
-interface AppState {
+export interface AppState {
   activeSessionId: string | null;
   sessions: SessionInfo[];
   sidebarOpen: boolean;

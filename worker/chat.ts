@@ -11,6 +11,9 @@ export class ChatHandler {
     this.baseUrl = defaultBaseUrl;
     this.apiKey = defaultApiKey;
     this.model = model;
+    if (!this.baseUrl?.startsWith('http') || !this.apiKey) {
+      throw new Error('Invalid OpenAI config: baseUrl must start with http and apiKey required');
+    }
     this.client = new OpenAI({
       baseURL: this.baseUrl,
       apiKey: this.apiKey
@@ -31,10 +34,12 @@ export class ChatHandler {
       changed = true;
     }
     if (changed) {
+      if (!this.baseUrl?.startsWith('http') || !this.apiKey) {
+        throw new Error('Invalid config update');
+      }
       this.client = new OpenAI({
         baseURL: this.baseUrl,
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true
+        apiKey: this.apiKey
       });
     }
   }
@@ -76,7 +81,7 @@ export class ChatHandler {
     onChunk: (chunk: string) => void
   ) {
     let fullContent = '';
-    const accumulatedToolCalls: ChatCompletionMessageFunctionToolCall[] = [];
+    const toolCallMap = new Map<number, ChatCompletionMessageFunctionToolCall>();
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta;
       if (delta?.content) {
@@ -85,21 +90,27 @@ export class ChatHandler {
       }
       if (delta?.tool_calls) {
         for (const tc of delta.tool_calls) {
-          if (!accumulatedToolCalls[tc.index]) {
-            accumulatedToolCalls[tc.index] = {
-              id: tc.id || '',
-              type: 'function',
-              function: { name: tc.function?.name || '', arguments: tc.function?.arguments || '' }
-            };
-          } else {
-            if (tc.function?.arguments) accumulatedToolCalls[tc.index].function.arguments += tc.function.arguments;
+          if (tc.index !== undefined) {
+            let toolCall = toolCallMap.get(tc.index);
+            if (!toolCall) {
+              toolCall = {
+                id: tc.id || '',
+                type: 'function',
+                function: { name: tc.function?.name || '', arguments: '' }
+              };
+              toolCallMap.set(tc.index, toolCall);
+            }
+            if (tc.function?.arguments) {
+              toolCall.function.arguments += tc.function.arguments;
+            }
           }
         }
       }
     }
+    const accumulatedToolCalls = Array.from(toolCallMap.values());
     if (accumulatedToolCalls.length > 0) {
-      const executedTools = await this.executeToolCalls(accumulatedToolCalls.filter(Boolean));
-      const finalResponse = await this.generateToolResponse(message, conversationHistory, accumulatedToolCalls.filter(Boolean), executedTools);
+      const executedTools = await this.executeToolCalls(accumulatedToolCalls);
+      const finalResponse = await this.generateToolResponse(message, conversationHistory, accumulatedToolCalls as any[], executedTools);
       return { content: finalResponse, toolCalls: executedTools };
     }
     return { content: fullContent };
@@ -113,7 +124,7 @@ export class ChatHandler {
     if (!responseMessage) return { content: 'No response from model.' };
     if (responseMessage.tool_calls) {
       const toolCalls = await this.executeToolCalls(responseMessage.tool_calls as ChatCompletionMessageFunctionToolCall[]);
-      const finalResponse = await this.generateToolResponse(message, conversationHistory, responseMessage.tool_calls, toolCalls);
+      const finalResponse = await this.generateToolResponse(message, conversationHistory, responseMessage.tool_calls as any[], toolCalls);
       return { content: finalResponse, toolCalls };
     }
     return { content: responseMessage.content || '' };
@@ -121,13 +132,15 @@ export class ChatHandler {
   private async executeToolCalls(openAiToolCalls: ChatCompletionMessageFunctionToolCall[]): Promise<ToolCall[]> {
     return Promise.all(openAiToolCalls.map(async (tc) => {
       let args = {};
+      let functionName = 'unknown';
       try {
-        args = JSON.parse(tc.function.arguments || '{}');
+        if (tc.function?.name) functionName = tc.function.name;
+        args = JSON.parse(tc.function?.arguments || '{}');
       } catch (e) {
-        console.error(`Failed to parse tool arguments for ${tc.function.name}:`, e);
+        console.error(`Failed to parse tool arguments for ${functionName}:`, e);
       }
-      const result = await executeTool(tc.function.name, args);
-      return { id: tc.id, name: tc.function.name, arguments: args, result };
+      const result = await executeTool(functionName, args);
+      return { id: tc.id, name: functionName, arguments: args, result };
     }));
   }
   private async generateToolResponse(userMsg: string, history: Message[], calls: any[], results: ToolCall[]): Promise<string> {
@@ -138,7 +151,7 @@ export class ChatHandler {
         ...history.slice(-10).map(m => ({ role: m.role as any, content: m.content })),
         { role: 'user', content: userMsg },
         { role: 'assistant', content: null, tool_calls: calls },
-        ...results.map((r, i) => ({ role: 'tool' as const, content: JSON.stringify(r.result), tool_call_id: calls[i].id }))
+        ...results.map((r, i) => ({ role: 'tool' as const, content: JSON.stringify(r.result), tool_call_id: r.id }))
       ]
     });
     return completion.choices[0]?.message?.content || '';
@@ -150,13 +163,13 @@ export class ChatHandler {
       { role: 'user' as const, content: userMessage }
     ];
   }
-  updateModel(newModel: string): void { 
-    if (newModel && newModel !== this.model) {
+  updateModel(newModel: string): void {
+    if (!newModel) return;
+    if (newModel !== this.model) {
       this.model = newModel;
       this.client = new OpenAI({
         baseURL: this.baseUrl,
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true
+        apiKey: this.apiKey
       });
     }
   }

@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
-import { useShallow } from 'zustand/react/shallow';
+import type { AppState } from '@/lib/stores';
 import { ChatInterface } from '@/components/chat-interface';
 import { SettingsModal } from '@/components/settings-modal';
 import { useAppStore } from '@/lib/stores';
@@ -22,10 +22,10 @@ import { toast } from 'sonner';
 export function HomePage() {
   const activeSessionId = useAppStore(s => s.activeSessionId);
   const setActiveSessionId = useAppStore(s => s.setActiveSessionId);
-  const sessions = useAppStore(useShallow(s => s.sessions));
+  const sessions = useAppStore((state: AppState) => state.sessions);
   const setSessions = useAppStore(s => s.setSessions);
   const setSettingsOpen = useAppStore(s => s.setSettingsOpen);
-  const globalConfig = useAppStore(useShallow(s => s.globalConfig));
+  const globalConfig = useAppStore((state: AppState) => state.globalConfig);
   const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
   const refreshSessions = useCallback(async () => {
     try {

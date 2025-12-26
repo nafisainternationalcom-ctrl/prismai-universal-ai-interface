@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useShallow } from 'zustand/react/shallow';
+import { shallow } from 'zustand/shallow';
+import type { AppState } from '@/lib/stores';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +13,7 @@ import type { Message } from '../../worker/types';
 import { toast } from 'sonner';
 export function ChatInterface() {
   const activeSessionId = useAppStore(s => s.activeSessionId);
-  const globalConfig = useAppStore(useShallow(s => s.globalConfig));
+  const globalConfig = useAppStore((state: AppState) => state.globalConfig);
   const setGlobalConfig = useAppStore(s => s.setGlobalConfig);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
