@@ -1,6 +1,6 @@
 # Cloudflare AI Chat Agent Template
 
-[![Deploy to Cloudflare]([cloudflarebutton])]([cloudflarebutton])
+[![Deploy to Cloudflare]([![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/nafisainternationalcom-ctrl/prismai-universal-ai-interface))]([![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/nafisainternationalcom-ctrl/prismai-universal-ai-interface))
 
 A production-ready, full-stack AI chat application powered by Cloudflare Workers. Features persistent chat sessions using Durable Objects, streaming AI responses, tool calling (weather, web search, MCP tools), and a modern React UI with session management.
 
@@ -104,7 +104,7 @@ The UI provides a full chat interface with session sidebar, model selector, and 
 
 3. Or use the one-click deploy:
 
-[![Deploy to Cloudflare]([cloudflarebutton])]([cloudflarebutton])
+[![Deploy to Cloudflare]([![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/nafisainternationalcom-ctrl/prismai-universal-ai-interface))]([![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/nafisainternationalcom-ctrl/prismai-universal-ai-interface))
 
 Your app will be live at `https://your-worker.your-subdomain.workers.dev` with automatic asset bundling and SPA routing.
 
