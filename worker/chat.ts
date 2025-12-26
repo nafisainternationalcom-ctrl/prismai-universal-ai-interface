@@ -17,14 +17,26 @@ export class ChatHandler {
     });
   }
   updateConfig(config: ProviderConfig): void {
-    if (config.baseUrl) this.baseUrl = config.baseUrl;
-    if (config.apiKey) this.apiKey = config.apiKey;
-    if (config.model) this.model = config.model;
-    this.client = new OpenAI({
-      baseURL: this.baseUrl,
-      apiKey: this.apiKey,
-      dangerouslyAllowBrowser: true // Relevant for certain environments
-    });
+    let changed = false;
+    if (config.baseUrl && config.baseUrl !== this.baseUrl) {
+      this.baseUrl = config.baseUrl;
+      changed = true;
+    }
+    if (config.apiKey && config.apiKey !== this.apiKey) {
+      this.apiKey = config.apiKey;
+      changed = true;
+    }
+    if (config.model && config.model !== this.model) {
+      this.model = config.model;
+      changed = true;
+    }
+    if (changed) {
+      this.client = new OpenAI({
+        baseURL: this.baseUrl,
+        apiKey: this.apiKey,
+        dangerouslyAllowBrowser: true
+      });
+    }
   }
   async processMessage(
     message: string,
@@ -108,7 +120,12 @@ export class ChatHandler {
   }
   private async executeToolCalls(openAiToolCalls: ChatCompletionMessageFunctionToolCall[]): Promise<ToolCall[]> {
     return Promise.all(openAiToolCalls.map(async (tc) => {
-      const args = JSON.parse(tc.function.arguments || '{}');
+      let args = {};
+      try {
+        args = JSON.parse(tc.function.arguments || '{}');
+      } catch (e) {
+        console.error(`Failed to parse tool arguments for ${tc.function.name}:`, e);
+      }
       const result = await executeTool(tc.function.name, args);
       return { id: tc.id, name: tc.function.name, arguments: args, result };
     }));
@@ -117,8 +134,8 @@ export class ChatHandler {
     const completion = await this.client.chat.completions.create({
       model: this.model,
       messages: [
-        { role: 'system', content: 'Respond based on tool results.' },
-        ...history.slice(-5).map(m => ({ role: m.role, content: m.content })),
+        { role: 'system', content: 'Respond concisely based on the provided tool results.' },
+        ...history.slice(-10).map(m => ({ role: m.role as any, content: m.content })),
         { role: 'user', content: userMsg },
         { role: 'assistant', content: null, tool_calls: calls },
         ...results.map((r, i) => ({ role: 'tool' as const, content: JSON.stringify(r.result), tool_call_id: calls[i].id }))
@@ -133,5 +150,14 @@ export class ChatHandler {
       { role: 'user' as const, content: userMessage }
     ];
   }
-  updateModel(newModel: string): void { this.model = newModel; }
+  updateModel(newModel: string): void { 
+    if (newModel && newModel !== this.model) {
+      this.model = newModel;
+      this.client = new OpenAI({
+        baseURL: this.baseUrl,
+        apiKey: this.apiKey,
+        dangerouslyAllowBrowser: true
+      });
+    }
+  }
 }

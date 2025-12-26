@@ -23,9 +23,7 @@ class ChatService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     } catch (error) {
       console.error('Failed to update session config:', error);
@@ -45,7 +43,6 @@ class ChatService {
       });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error details:', errorText);
         throw new Error(`HTTP ${response.status}: ${errorText || 'Unknown error'}`);
       }
       if (onChunk && response.body) {
@@ -56,9 +53,7 @@ class ChatService {
             const { done, value } = await reader.read();
             if (done) break;
             const chunk = decoder.decode(value, { stream: true });
-            if (chunk) {
-              onChunk(chunk);
-            }
+            if (chunk) onChunk(chunk);
           }
         } finally {
           reader.releaseLock();
@@ -74,9 +69,7 @@ class ChatService {
   async getMessages(): Promise<ChatResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/messages`);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     } catch (error) {
       console.error('Failed to get messages:', error);
@@ -85,21 +78,15 @@ class ChatService {
   }
   async clearMessages(): Promise<ChatResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/clear`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      const response = await fetch(`${this.baseUrl}/clear`, { method: 'DELETE' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     } catch (error) {
       console.error('Failed to clear messages:', error);
       return { success: false, error: 'Failed to clear messages' };
     }
   }
-  getSessionId(): string {
-    return this.sessionId;
-  }
+  getSessionId(): string { return this.sessionId; }
   newSession(): void {
     this.sessionId = crypto.randomUUID();
     this.baseUrl = `/api/chat/${this.sessionId}`;
@@ -156,39 +143,15 @@ class ChatService {
       return { success: false, error: 'Failed to clear all sessions' };
     }
   }
-  async updateModel(model: string): Promise<ChatResponse> {
-    try {
-      const response = await fetch(`${this.baseUrl}/model`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Failed to update model:', error);
-      return { success: false, error: 'Failed to update model' };
-    }
-  }
 }
 export const chatService = new ChatService();
 export const formatTime = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 export const generateSessionTitle = (firstUserMessage?: string): string => {
   const now = new Date();
-  const dateTime = now.toLocaleString([], {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  if (!firstUserMessage || !firstUserMessage.trim()) {
+  const dateTime = now.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  if (!firstUserMessage || !firstUserMessage.trim() || firstUserMessage.length < 2) {
     return `Chat ${dateTime}`;
   }
   const cleanMessage = firstUserMessage.trim().replace(/\s+/g, ' ');
@@ -198,13 +161,15 @@ export const generateSessionTitle = (firstUserMessage?: string): string => {
   return `${truncated} • ${dateTime}`;
 };
 export const renderToolCall = (toolCall: ToolCall): string => {
-  const result = toolCall.result as WeatherResult | MCPResult | ErrorResult | undefined;
+  const result = toolCall.result as any;
   if (!result) return `⚠️ ${toolCall.name}: No result`;
   if ('error' in result) return `❌ ${toolCall.name}: ${result.error}`;
-  if ('content' in result) return `🔧 ${toolCall.name}: Executed`;
   if (toolCall.name === 'get_weather') {
-    const weather = result as WeatherResult;
-    return `🌤️ Weather in ${weather.location}: ${weather.temperature}°C, ${weather.condition}`;
+    return `🌤️ Weather in ${result.location}: ${result.temperature}°C, ${result.condition}`;
+  }
+  if (toolCall.name === 'web_search' && result.content) {
+    const snippet = result.content.slice(0, 50).replace(/\n/g, ' ') + '...';
+    return `🔍 Search "${toolCall.arguments.query || 'Web'}": ${snippet}`;
   }
   return `🔧 ${toolCall.name}: Done`;
 };
